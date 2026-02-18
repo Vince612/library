@@ -1,0 +1,144 @@
+                        ↱  evita erro se ele já existir.
+CREAT DATABASE IF NOT EXISTS library
+        ⮑ cria o banco chamado library.
+
+CHARACTER SET utf8mb4 → permite salvar qualquer caractere.
+
+COLLATE utf8mb4_unicode_ci → define como os textos serão comparados
+
+USE library; ⭢Seleciona o banco library
+
+CREATE TABLE usuarios ( ⭢ Cria a tabela chamada usuários
+
+
+    ↱número inteiro.                 ↱ identificador único da tabela.    
+id INT AUTO_INCREMENT PRIMARY KEY,
+            ⮑aumenta automaticamente.
+
+          ↱Texto de até 100 caracteres.
+nome VARCHAR(100) NOT NULL,
+                     ⮑preenchimento obrigatório.
+ 
+            ↱Texto até 150 caracteres.
+email VARCHAR(150) NOT NULL UNIQUE,
+                       ⮑Garante que não existam dois usuários com o mesmo email.
+
+senha_hash VARCHAR(255) NOT NULL,
+    ⮑Armazena a senha criptografada (nunca a senha pura).
+
+        ↱aceita apenas valores definidos. 
+tipo ENUM('usuario','funcionario')
+                   ⮑Pode ser "usuario" ou "funcionario".
+ 
+NOT NULL DEFAULT 'usuario',
+       ⮑Valor padrão: "usuario".
+
+ativo BOOLEAN DEFAULT TRUE,
+        ⮑Indica se o usuário está ativo.            
+
+data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP,
+        ⮑Salva automaticamente a data e hora do cadastro.
+
+INDEX idx_email (email),
+INDEX idx_tipo (tipo)
+       ⮑Cria índices para buscas mais rápidas por email e tipo.
+
+ CREATE TABLE livros (
+      ⮑Cria a tabela de livros.
+
+id INT AUTO_INCREMENT PRIMARY KEY,
+       ⮑Identificador único do livro.
+
+
+titulo VARCHAR(200) NOT NULL,  ↖
+autor VARCHAR(150) NOT NULL,   ⭠ Informações básicas do livro.
+editora VARCHAR(150),          ↙
+
+           ↱Total de exemplares.
+quantidade_total INT NOT NULL DEFAULT 1 CHECK (quantidade_total >= 0),
+                                          ⮑CHECK impede valor negativo.
+
+                                         ↱Também não pode ser negativa.
+quantidade_disponivel INT NOT NULL DEFAULT 1 CHECK (quantidade_disponivel >= 0),
+        ⮑Quantidade disponível para empréstimo.
+
+data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP,
+        ⮑Data em que o livro foi cadastrado.
+
+INDEX idx_titulo (titulo),
+INDEX idx_autor (autor)
+       ⮑Melhora performance de busca por título e autor.
+
+CREATE TABLE emprestimos (
+   ⮑Tabela que registra quem pegou qual livro.
+
+id INT AUTO_INCREMENT PRIMARY KEY, →ID do empréstimo. 
+
+id_usuario INT NOT NULL,
+id_livro INT NOT NULL,  
+    ⮑Relacionam o empréstimo com usuário e livro.
+
+data_emprestimo DATE NOT NULL, →Data do empréstimo.
+data_prevista_devolucao DATE NOT NULL, →Data prevista de devolução.
+data_devolucao DATE NULL, →Data real de devolução (pode ser NULL se ainda não devolveu).
+
+multa DECIMAL(10,2) DEFAULT 0 CHECK (multa >= 0),
+     ⮑Valor da multa, até 10 dígitos, 2 casas decimais, não fica negativo.
+
+status ENUM('emprestado','devolvido','atrasado')
+DEFAULT 'emprestado',
+    ⮑Estado atual do empréstimo.
+
+CONSTRAINT fk_usuario 
+FOREIGN KEY (id_usuario) REFERENCES usuarios(id) →Liga id_usuario à tabela usuarios.
+ON DELETE CASCADE →se apagar o usuário, apaga seus empréstimos.
+ON UPDATE CASCADE, → se o ID mudar, atualiza automaticamente.
+
+CONSTRAINT fk_livro 
+FOREIGN KEY (id_livro) REFERENCES livros(id) →Liga id_livro à tabela livros.
+ON DELETE CASCADE  → se apagar o livro, apaga seus empréstimos.
+ON UPDATE CASCADE, → se o ID mudar, atualiza automaticamente.
+
+DELIMITER $$
+   ⮑Muda temporariamente o delimitador para poder criar o trigger.
+
+CREATE TRIGGER reduzir estoque →Cria um gatilho chamado reduzir_estoque.
+BEFORE INSERT ON empréstimos  →Ele executa antes de inserir um novo empréstimo.
+
+FOR EACH ROW →Executa para cada novo registro inserido.
+
+DECLARE qtd INT; →Cria uma variável chamada qtd.
+
+SELECT quantidade_disponivel 
+INTO qtd 
+FROM livros 
+WHERE id = NEW.id_livro; → livro que está sendo inserido no empréstimo.
+⮑Busca a quantidade disponível do livro que está sendo emprestado.
+
+IF qtd <= 0 THEN
+SIGNAL SQLSTATE '45000'
+SET MESSAGE_TEXT = 'Livro indisponível para empréstimo';
+END IF;
+⮑ se não houver livros disponível alerta: 'Livro indisponível para empréstimo'
+
+UPDATE livros
+SET quantidade_disponivel = quantidade_disponivel - 1
+WHERE id = NEW.id_livro;
+⮑Diminui 1 da quantidade disponível automaticamente.
+
+END$$
+DELIMITER ;
+⮑Finaliza o trigger e restaura o delimitador padrão.
+
+
+Banco configurado para Unicode completo
+
+Controle de usuários com tipos
+
+Controle de estoque de livros
+
+Sistema de empréstimos com multa
+
+Integridade referencial
+
+Trigger automático para controle de estoque
